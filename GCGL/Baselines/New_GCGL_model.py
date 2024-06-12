@@ -6,21 +6,21 @@ from torch.autograd import Variable
 
 
 def predict(args, model, bg):
-    node_feats = bg.ndata[args['node_data_field']].cuda()
+    node_feats = bg.ndata[args['node_data_field']].cpu()
     if args.get('edge_featurizer', None) is not None:
-        edge_feats = bg.edata[args['edge_data_field']].cuda()
+        edge_feats = bg.edata[args['edge_data_field']].cpu()
         return model(bg, node_feats, edge_feats)
     else:
         return model(bg, node_feats)
 
 
 def MultiClassCrossEntropy(logits, labels, T):
-    labels = Variable(labels.data, requires_grad=False).cuda()
+    labels = Variable(labels.data, requires_grad=False).cpu()
     outputs = torch.log_softmax(logits/T, dim=1)   # compute the log of softmax values
     labels = torch.softmax(labels/T, dim=1)
     outputs = torch.sum(outputs * labels, dim=1, keepdim=False)
     outputs = -torch.mean(outputs, dim=0, keepdim=False)
-    return Variable(outputs.data, requires_grad=True).cuda()
+    return Variable(outputs.data, requires_grad=True).cpu()
 
 class NET(torch.nn.Module):
     """
@@ -62,14 +62,14 @@ class NET(torch.nn.Module):
         for batch_id, batch_data in enumerate(data_loader[task_i]):
             clss = args['tasks'][task_i]
             smiles, bg, labels, masks = batch_data
-            bg = bg.to(f"cuda:{args['gpu']}")
-            labels, masks = labels.cuda(), masks.cuda()
+            bg = bg.to('cpu')
+            labels, masks = labels.cpu(), masks.cpu()
             logits = predict(args, self.net, bg)
 
             # class balance
             n_per_cls = [(labels == j).sum() for j in clss]
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args['gpu']))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             # labels= labels.long()
             for i, c in enumerate(clss):
                 labels[labels == c] = i
@@ -107,14 +107,14 @@ class NET(torch.nn.Module):
         for batch_id, batch_data in enumerate(data_loader[task_i]):
             clss = args['tasks'][task_i]
             smiles, bg, labels, masks = batch_data
-            bg = bg.to(f"cuda:{args['gpu']}")
-            labels, masks = labels.cuda(), masks.cuda()
+            bg = bg.to('cpu')
+            labels, masks = labels.cpu(), masks.cpu()
             logits = predict(args, self.net, bg)
 
             # class balance
             n_per_cls = [(labels == j).sum() for j in clss]
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args['gpu']))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             # labels= labels.long()
             for i, c in enumerate(clss):
                 labels[labels == c] = i
@@ -151,8 +151,8 @@ class NET(torch.nn.Module):
         train_meter = Meter()
         for batch_id, batch_data in enumerate(data_loader):
             smiles, bg, labels, masks = batch_data
-            bg = bg.to(f"cuda:{args['gpu']}")
-            labels, masks = labels.cuda(), masks.cuda()
+            bg = bg.to('cpu')
+            labels, masks = labels.cpu(), masks.cpu()
             logits = predict(args, self.net, bg)
 
             # Mask non-existing labels

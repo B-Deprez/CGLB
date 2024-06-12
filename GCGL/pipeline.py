@@ -84,18 +84,18 @@ def mkdir_if_missing(directory):
             if e.errno != errno.EEXIST:
                 raise
 def predict(args, model, bg, task_i=None):
-    node_feats = bg.ndata.pop(args['node_data_field']).cuda()
+    node_feats = bg.ndata.pop(args['node_data_field']).cpu()
     if args.get('edge_featurizer', None) is not None:
-        edge_feats = bg.edata.pop(args['edge_data_field']).cuda()
+        edge_feats = bg.edata.pop(args['edge_data_field']).cpu()
         if args['backbone'] in ['GCN', 'GAT', 'Weave']:
-            return model(bg.to(f"cuda:{args['gpu']}"), node_feats, edge_feats)
+            return model(bg.to('cpu'), node_feats, edge_feats)
         else:
-            return model(bg.to(f"cuda:{args['gpu']}"), node_feats, edge_feats, task_i)
+            return model(bg.to('cpu'), node_feats, edge_feats, task_i)
     else:
         if args['backbone'] in ['GCN', 'GAT', 'Weave']:
-            return model(bg.to(f"cuda:{args['gpu']}"), node_feats)
+            return model(bg.to('cpu'), node_feats)
         else:
-            return model(bg.to(f"cuda:{args['gpu']}"), node_feats, task_i)
+            return model(bg.to('cpu'), node_feats, task_i)
 
 
 
@@ -104,7 +104,7 @@ def run_a_train_epoch(args, epoch, model, data_loader, loss_criterion, optimizer
     train_meter = Meter()
     for batch_id, batch_data in enumerate(data_loader):
         smiles, bg, labels, masks = batch_data
-        labels, masks = labels.cuda(), masks.cuda()
+        labels, masks = labels.cpu(), masks.cpu()
         logits = predict(args, model, bg, task_i)
         if isinstance(logits, tuple):
             logits = logits[0]
@@ -126,7 +126,7 @@ def eval_single_task_multi_label(args, model, data_loader, task_i):
     with torch.no_grad():
         for batch_id, batch_data in enumerate(data_loader):
             smiles, bg, labels, masks = batch_data
-            labels = labels.cuda()
+            labels = labels.cpu()
             logits = predict(args, model, bg, task_i)
             if isinstance(logits, tuple):
                 logits = logits[0]
@@ -145,7 +145,7 @@ def eval_all_learnt_task_multi_label(args, model, data_loader, task_i):
             t_end = args['n_tasks']
         for batch_id, batch_data in enumerate(data_loader):
             smiles, bg, labels, masks = batch_data
-            labels = labels.cuda()
+            labels = labels.cpu()
             logits = predict(args, model, bg)
             if isinstance(logits, tuple):
                 logits = logits[0]
@@ -310,7 +310,7 @@ def pipeline_multi_label(args, valid=False):
 
     '''
     epochs = args['num_epochs'] if valid else 0
-    torch.cuda.set_device(args['gpu'])
+  #torch.cuda.set_device(args['gpu'])
     # set_random_seed(args['random_seed'])
     G = GraphLevelDataset(args)
     dataset, train_set, val_set, test_set = G.dataset, G.train_set, G.val_set, G.test_set
@@ -339,10 +339,10 @@ def pipeline_multi_label(args, valid=False):
         data_loader = DataLoader(train_set, batch_size=len(train_set),collate_fn=collate_molgraphs, shuffle=True)
         if life_model_ins is not None:
             life_model_ins.data_loader = data_loader
-        loss_criterion = BCEWithLogitsLoss(pos_weight=dataset.task_pos_weights(train_set.indices).cuda(),
+        loss_criterion = BCEWithLogitsLoss(pos_weight=dataset.task_pos_weights(train_set.indices).cpu(),
                                            reduction='none')
 
-    model.cuda(args['gpu'])
+    model.cpu()
     #score_mean = []
     score_matrix = np.zeros([args['n_tasks'], args['n_tasks']])
 
@@ -353,7 +353,7 @@ def pipeline_multi_label(args, valid=False):
             if args['joint_args']['reset_param']:
                 # reset the model for joint train
                 model = load_model(args)
-                model.cuda(args['gpu'])
+                model.cpu()
                 life_model_ins.change_model(model, args)
 
         name, ite = args['current_model_save_path']
@@ -385,14 +385,14 @@ def pipeline_multi_label(args, valid=False):
         if not args['pre_trained'] and valid and args['early_stop']:
             stopper.load_checkpoint(model)
         if not valid:
-            model = pickle.load(open(save_model_path,'rb')).cuda(args['gpu'])
+            model = pickle.load(open(save_model_path,'rb')).cpu()
         score_matrix[tid] = test_func(args, model, test_loader, tid)
         if valid:
             mkdir_if_missing(f"{args['result_path']}/{subfolder_c}/val_models")
             with open(save_model_path, 'wb') as f:
                 pickle.dump(model, f)
         if args['method'] == 'lwf':
-            prev_model = copy.deepcopy(life_model_ins).cuda(args['gpu']) if valid else None
+            prev_model = copy.deepcopy(life_model_ins).cpu() if valid else None
 
     AP = round(np.mean(score_matrix[-1, :]), 4)
     print('AP: ', round(np.mean(score_matrix[-1, :]), 4))
@@ -406,7 +406,7 @@ def pipeline_multi_label(args, valid=False):
 
 def pipeline_multi_class(args, valid=False):
     epochs = args['num_epochs'] if valid else 0
-    torch.cuda.set_device(args['gpu'])
+  #torch.cuda.set_device(args['gpu'])
     G = GraphLevelDataset(args)
     dataset, train_set, val_set, test_set = G.dataset, G.train_set, G.val_set, G.test_set # cls-IL and tsk-IL have different test_set, and different test_func
     train_set_joint = [ConcatDataset(train_set[0:i]) for i in range(1,len(train_set)+1)] # for tsk_IL only, meaningless when cls-IL since train_set already concats learnt tasks when cls-IL
@@ -437,7 +437,7 @@ def pipeline_multi_class(args, valid=False):
 
         loss_criterion = torch.nn.functional.cross_entropy
 
-    model.cuda(args['gpu'])
+    model.cpu()
     score_matrix = np.zeros([args['n_tasks'], args['n_tasks']])
 
     prev_model = None
@@ -453,7 +453,7 @@ def pipeline_multi_class(args, valid=False):
             if args['joint_args']['reset_param']:
                 # reset the model for joint train
                 model = load_model(args)
-                model.cuda(args['gpu'])
+                model.cpu()
                 life_model_ins.change_model(model, args)
         name, ite = args['current_model_save_path']
         config_name = name.split('/')[-1]
@@ -473,14 +473,14 @@ def pipeline_multi_class(args, valid=False):
 
         if not valid:
             # if testing, load the trained model
-            model = pickle.load(open(save_model_path,'rb')).cuda(args['gpu'])
+            model = pickle.load(open(save_model_path,'rb')).cpu()
         score_matrix[tid] = test_func(args, model, test_loader, tid)
         if valid:
             mkdir_if_missing(f"{args['result_path']}/{subfolder_c}/val_models")
             with open(save_model_path, 'wb') as f:
                 pickle.dump(model, f)
         if args['method'] == 'lwf':
-            prev_model = copy.deepcopy(life_model_ins).cuda(args['gpu']) if valid else None
+            prev_model = copy.deepcopy(life_model_ins).cpu() if valid else None
 
     AP = round(np.mean(score_matrix[-1, :]), 4)
     print('AP: ', AP)

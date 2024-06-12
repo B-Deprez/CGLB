@@ -118,7 +118,7 @@ if __name__ == '__main__':
                     AP, AF, acc_matrix = main(args,valid=True)
                     acc_matrices.append(acc_matrix)
                     AP_dict[hyp_params_str].append(AP)
-                    torch.cuda.empty_cache()
+                  #torch.cuda.empty_cache()
                     if ite == 0:
                         with open(
                                 f"{args['result_path']}/log.txt", 'a') as f:
@@ -136,7 +136,7 @@ if __name__ == '__main__':
                     acc_matrices = traceback.format_exc()
                     print(acc_matrices)
                     print('error happens on \n', name)
-                    torch.cuda.empty_cache()
+                  #torch.cuda.empty_cache()
                     break
             if np.mean(AP_dict[hyp_params_str]) > AP_best:
                 AP_best = np.mean(AP_dict[hyp_params_str])

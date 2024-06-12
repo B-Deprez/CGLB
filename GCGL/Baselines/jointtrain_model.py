@@ -6,10 +6,10 @@ from dgllife.utils import EarlyStopping, Meter
 import numpy as np
 
 def predict(args, model, bg, task_id=None):
-    # bg = bg.cuda()
-    node_feats = bg.ndata.pop(args['node_data_field']).cuda()
+    # bg = bg.cpu()
+    node_feats = bg.ndata.pop(args['node_data_field']).cpu()
     if args.get('edge_featurizer', None) is not None:
-        edge_feats = bg.edata.pop(args['edge_data_field']).cuda()
+        edge_feats = bg.edata.pop(args['edge_data_field']).cpu()
         if args['backbone'] in ['GCN', 'GAT', 'Weave']:
             return model(bg, node_feats, edge_feats)
         else:
@@ -63,8 +63,8 @@ class NET(torch.nn.Module):
         train_meter = Meter()
         for batch_id, batch_data in enumerate(data_loader):
             smiles, bg, labels, masks = batch_data
-            labels, masks = labels.cuda(), masks.cuda()
-            logits = predict(args, self.net, bg.to(f"cuda:{args['gpu']}"), task_i)
+            labels, masks = labels.cpu(), masks.cpu()
+            logits = predict(args, self.net, bg.to('cpu'), task_i)
 
             # Mask non-existing labels
             loss_all = loss_criterion(logits, labels) * (masks != 0).float()
@@ -97,16 +97,16 @@ class NET(torch.nn.Module):
             clss.extend(tid)
         for batch_id, batch_data in enumerate(train_loader_joint[task_i]):
             smiles, bg, labels, masks = batch_data
-            labels, masks = labels.cuda(), masks.cuda()
-            logits = predict(args, self.net, bg.to(f"cuda:{args['gpu']}"), task_i)
+            labels, masks = labels.cpu(), masks.cpu()
+            logits = predict(args, self.net, bg.to('cpu'), task_i)
             loss=0
             # separately calculate loss for different tasks
             for oldt_id, old_t in enumerate(args['tasks'][0:task_i + 1]):
-                labels_ = copy.deepcopy(labels).cuda()
+                labels_ = copy.deepcopy(labels).cpu()
                 # Mask non-existing labels
                 n_per_cls = [(labels == j).sum() for j in old_t]
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]
-                loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args['gpu']))
+                loss_w_ = torch.tensor(loss_w_).to('cpu')
                 # labels= labels.long()
                 ids_current_task = []
                 for i, c in enumerate(old_t):
@@ -140,13 +140,13 @@ class NET(torch.nn.Module):
         for batch_id, batch_data in enumerate(data_loader[task_i]):
             # for joint training, dataloader[task_i] contains data from task 0 to task_i
             smiles, bg, labels, masks = batch_data
-            labels, masks = labels.cuda(), masks.cuda()
-            logits = predict(args, self.net, bg.to(f"cuda:{args['gpu']}"))
+            labels, masks = labels.cpu(), masks.cpu()
+            logits = predict(args, self.net, bg.to('cpu'))
 
             # Mask non-existing labels
             n_per_cls = [(labels == j).sum() for j in clss]
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args['gpu']))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             for i, c in enumerate(clss):
                 labels[labels == c] = i
 

@@ -137,7 +137,7 @@ class GraphConv(nn.Module):
         graph = graph.local_var()
 
         if self._norm == 'both':
-            degs = graph.out_degrees().to(feat.device).float().clamp(min=1)
+            degs = graph.out_degrees().to('cpu').float().clamp(min=1)
             norm = th.pow(degs, -0.5)
             shp = norm.shape + (1,) * (feat.dim() - 1)
             norm = th.reshape(norm, shp)
@@ -166,7 +166,7 @@ class GraphConv(nn.Module):
             graph.ndata.pop('feat')
             #######
 
-            graph.update_all(fn.copy_src(src='h', out='m'),
+            graph.update_all(fn.copy_u('h', out='m'),
                              fn.sum(msg='m', out='h'))
             rst = graph.dstdata['h']
         else: # the code below is problematic, e_soft does not contain trainable weights in the first layer, so is temporarily not in use
@@ -181,14 +181,14 @@ class GraphConv(nn.Module):
             graph.ndata.pop('feat')
             #######
 
-            graph.update_all(fn.copy_src(src='h', out='m'),
+            graph.update_all(fn.copy_u('h', out='m'),
                              fn.sum(msg='m', out='h'))
             rst = graph.dstdata['h']
             if weight is not None:
                 rst = th.matmul(rst, weight)
 
         if self._norm != 'none':
-            degs = graph.in_degrees().to(feat.device).float().clamp(min=1)
+            degs = graph.in_degrees().to('cpu').float().clamp(min=1)
             if self._norm == 'both':
                 norm = th.pow(degs, -0.5)
             else:

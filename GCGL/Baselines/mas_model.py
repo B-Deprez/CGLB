@@ -5,9 +5,9 @@ import numpy as np
 from torch.utils.data import DataLoader
 
 def predict(args, model, bg):
-    node_feats = bg.ndata.pop(args['node_data_field']).cuda()
+    node_feats = bg.ndata.pop(args['node_data_field']).cpu()
     if args.get('edge_featurizer', None) is not None:
-        edge_feats = bg.edata.pop(args['edge_data_field']).cuda()
+        edge_feats = bg.edata.pop(args['edge_data_field']).cpu()
         return model(bg, node_feats, edge_feats)
     else:
         return model(bg, node_feats)
@@ -65,10 +65,10 @@ class NET(torch.nn.Module):
             n_new_data=0
             for batch_id, batch_data in enumerate(self.data_loader): # self.dataloader uses full batch by default
                 smiles, bg, labels, masks = batch_data
-                masks = masks.cuda(args['gpu'])
+                masks = masks.cpu()
                 n_new_data+=masks[:,self.current_task].sum().item()
-                bg = bg.to(f"cuda:{args['gpu']}")
-                #labels, masks = labels.cuda(), masks.cuda()
+                bg = bg.to('cpu')
+                #labels, masks = labels.cpu(), masks.cpu()
                 output = predict(args, self.net, bg)[:,self.current_task] * (masks[:,self.current_task] != 0).float()
 
                 output.pow_(2)
@@ -113,8 +113,8 @@ class NET(torch.nn.Module):
         train_meter = Meter()
         for batch_id, batch_data in enumerate(data_loader):
             smiles, bg, labels, masks = batch_data
-            bg = bg.to(f"cuda:{args['gpu']}")
-            labels, masks = labels.cuda(args['gpu']), masks.cuda(args['gpu'])
+            bg = bg.to('cpu')
+            labels, masks = labels.cpu(), masks.cpu()
             logits = predict(args, self.net, bg)
 
             # Mask non-existing labels
@@ -162,7 +162,7 @@ class NET(torch.nn.Module):
             n_new_data=0
             for batch_id, batch_data in enumerate(self.data_loader[task_i]):
                 smiles, bg, labels, masks = batch_data
-                bg = bg.to(f"cuda:{args['gpu']}")
+                bg = bg.to('cpu')
                 n_new_data+=labels.shape[0]
 
                 output = predict(args, self.net, bg)[:, args['tasks'][self.current_task]]
@@ -211,14 +211,14 @@ class NET(torch.nn.Module):
         #train_meter = Meter()
         for batch_id, batch_data in enumerate(data_loader[task_i]):
             smiles, bg, labels, masks = batch_data
-            bg = bg.to(f"cuda:{args['gpu']}")
-            labels, masks = labels.cuda(), masks.cuda()
+            bg = bg.to('cpu')
+            labels, masks = labels.cpu(), masks.cpu()
             logits = predict(args, self.net, bg)
 
             # class balance
             n_per_cls = [(labels == j).sum() for j in clss]
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args['gpu']))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             # labels= labels.long()
             for i, c in enumerate(clss):
                 labels[labels == c] = i
@@ -268,7 +268,7 @@ class NET(torch.nn.Module):
             for batch_id, batch_data in enumerate(self.data_loader[self.current_task]):
                 smiles, bg, labels, masks = batch_data
                 n_new_data += labels.shape[0]
-                bg = bg.to(f"cuda:{args['gpu']}")
+                bg = bg.to('cpu')
                 output = predict(args, self.net, bg)[:, args['tasks'][self.current_task]]
 
                 output.pow_(2)
@@ -312,14 +312,14 @@ class NET(torch.nn.Module):
         #train_meter = Meter()
         for batch_id, batch_data in enumerate(data_loader[task_i]):
             smiles, bg, labels, masks = batch_data
-            bg = bg.to(f"cuda:{args['gpu']}")
-            labels, masks = labels.cuda(args['gpu']), masks.cuda(args['gpu'])
+            bg = bg.to('cpu')
+            labels, masks = labels.cpu(), masks.cpu()
             logits = predict(args, self.net, bg)
 
             # class balance
             n_per_cls = [(labels == j).sum() for j in clss]
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args['gpu']))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             # labels= labels.long()
             for i, c in enumerate(clss):
                 labels[labels == c] = i
