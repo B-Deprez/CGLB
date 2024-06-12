@@ -70,7 +70,7 @@ class NET(torch.nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
         if args.classifier_increase:
             loss = self.ce(output[train_ids, offset1:offset2], output_labels, weight=loss_w_[offset1: offset2])
         else:
@@ -148,7 +148,7 @@ class NET(torch.nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
         loss = self.ce(output[train_ids, offset1:offset2], output_labels-offset1, weight=loss_w_[offset1: offset2])
 
         if t > 0:
@@ -213,7 +213,7 @@ class NET(torch.nn.Module):
         offset1, offset2 = self.task_manager.get_label_offset(t - 1)[1], self.task_manager.get_label_offset(t)[1]
         for input_nodes, output_nodes, blocks in dataloader:
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
             if args.cls_balance:
@@ -221,7 +221,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_labels = output_labels - offset1
 
             output_predictions = self.net.forward_batch(blocks, input_features)
@@ -245,10 +245,10 @@ class NET(torch.nn.Module):
             new_fisher = []
             pgss = []
 
-            #output = torch.tensor([]).cuda(args.gpu)
+            #output = torch.tensor([]).cpu()
             for input_nodes, output_nodes, blocks in dataloader:
                 pgs = []
-                blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+                blocks = [b.to('cpu') for b in blocks]
                 input_features = blocks[0].srcdata['feat']
                 #output_labels = blocks[-1].dstdata['label'].squeeze()
                 output_predictions = self.net.forward_batch(blocks, input_features)
@@ -307,7 +307,7 @@ class NET(torch.nn.Module):
         offset1, offset2 = self.task_manager.get_label_offset(t)
         for input_nodes, output_nodes, blocks in dataloader:
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
             if args.cls_balance:
@@ -315,7 +315,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_predictions = self.net.forward_batch(blocks, input_features)
             if isinstance(output_predictions, tuple):
                 output_predictions = output_predictions[0]
@@ -338,7 +338,7 @@ class NET(torch.nn.Module):
             pgss = []
             for input_nodes, output_nodes, blocks in dataloader:
                 pgs = []
-                blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+                blocks = [b.to('cpu') for b in blocks]
                 input_features = blocks[0].srcdata['feat']
                 output_labels = blocks[-1].dstdata['label'].squeeze()
                 output_predictions = self.net.forward_batch(blocks, input_features)

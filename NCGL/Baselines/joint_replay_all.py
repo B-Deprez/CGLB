@@ -68,7 +68,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             if args.classifier_increase:
                 loss += self.ce(output[train_ids, offset1:offset2], labels, weight=loss_w_[offset1: offset2])
             else:
@@ -107,7 +107,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             loss += self.ce(output[train_ids, offset1:offset2], labels-offset1, weight=loss_w_[offset1: offset2])
         loss.backward()
         self.opt.step()
@@ -134,7 +134,7 @@ class NET(torch.nn.Module):
 
         for input_nodes, output_nodes, blocks in dataloader:
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
             if args.cls_balance:
@@ -142,7 +142,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_predictions,_ = self.net.forward_batch(blocks, input_features)
             loss = 0
             for tt in range(t+1):
@@ -179,7 +179,7 @@ class NET(torch.nn.Module):
         offset1, offset2 = self.task_manager.get_label_offset(t)
         for input_nodes, output_nodes, blocks in dataloader:
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
             if args.cls_balance:
@@ -187,7 +187,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_predictions,_ = self.net.forward_batch(blocks, input_features)
             loss = self.ce(output_predictions[:,offset1:offset2], output_labels, weight=loss_w_[offset1:offset2])
             loss.backward()
@@ -229,7 +229,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             loss += self.ce(output[train_ids_current_task, offset1:offset2], labels - offset1, weight=loss_w_[offset1: offset2])
         loss.backward()
         self.opt.step()
@@ -270,7 +270,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             loss += self.ce(output[train_ids_current_task, offset1:offset2], labels, weight=loss_w_[offset1: offset2])
         loss.backward()
         self.opt.step()

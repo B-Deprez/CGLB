@@ -7,7 +7,7 @@ from dgl.nn.pytorch import edge_softmax, GATConv
 import torch.nn as nn
 
 def MultiClassCrossEntropy(logits, labels, T):
-    labels = Variable(labels.data, requires_grad=False).cuda()
+    labels = Variable(labels.data, requires_grad=False).cpu()
     outputs = torch.log_softmax(logits/T, dim=1)   # compute the log of softmax values
     labels = torch.softmax(labels/T, dim=1)
     outputs = torch.sum(outputs * labels, dim=1, keepdim=False)
@@ -99,7 +99,7 @@ class NET(torch.nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
         if args.classifier_increase:
             loss = self.ce(logits[train_ids, offset1:offset2], output_labels, weight=loss_w_[offset1: offset2])
         else:
@@ -140,7 +140,7 @@ class NET(torch.nn.Module):
             self.current_task = t
 
         self.net.zero_grad()
-        self.cuda()
+        self.cpu()
         offset1, offset2 = self.task_manager.get_label_offset(t - 1)[1], self.task_manager.get_label_offset(t)[1]
         logits = self.net(g, features)
         if isinstance(logits, tuple):
@@ -152,7 +152,7 @@ class NET(torch.nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
         loss = self.ce(logits[train_ids, offset1:offset2], output_labels- offset1, weight=loss_w_[offset1: offset2])
 
         if t > 0:
@@ -192,11 +192,11 @@ class NET(torch.nn.Module):
             self.current_task = t
 
         self.net.zero_grad()
-        self.cuda()
+        self.cpu()
         offset1, offset2 = self.task_manager.get_label_offset(t - 1)[1], self.task_manager.get_label_offset(t)[1]
         for input_nodes, output_nodes, blocks in dataloader:
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
             if args.cls_balance:
@@ -204,7 +204,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_labels = output_labels - offset1
 
             output_predictions,_ = self.net.forward_batch(blocks, input_features)
@@ -251,11 +251,11 @@ class NET(torch.nn.Module):
             self.current_task = t
 
         self.net.zero_grad()
-        self.cuda()
+        self.cpu()
         offset1, offset2 = self.task_manager.get_label_offset(t)
         for input_nodes, output_nodes, blocks in dataloader:
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
             if args.cls_balance:
@@ -263,7 +263,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
 
             output_predictions,_ = self.net.forward_batch(blocks, input_features)
             if args.classifier_increase:

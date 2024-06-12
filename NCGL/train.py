@@ -11,7 +11,7 @@ dir_home = os.getcwd()
 sys.path.append(os.path.join(dir_home,'.local/lib/python3.7/site-packages')) # for hpc usage
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='CGLB')
-    parser.add_argument("--dataset", type=str, default='CoraFull-CL', help='Products-CL, Reddit-CL, Arxiv-CL, CoraFull-CL')
+    parser.add_argument("--dataset", type=str, default='CoraFull-CL', help='Products-CL, Reddit-CL, Arxiv-CL, CoraFull-CL, Elliptic-CL')
     parser.add_argument("--gpu", type=int, default=0, help="which GPU to use.")
     parser.add_argument("--seed", type=int, default=1, help="seed for exp")
     parser.add_argument("--epochs", type=int, default=200, help="number of training epochs, default = 200")
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_nbs_sample', type=lambda x: [int(i) for i in x.replace(' ', '').split(',')], default=[10, 25], help='number of neighbors to sample per hop, use comma to separate the numbers when using the command line, e.g. 10,25 or 10, 25')
     parser.add_argument('--nb_sampler', default=None)
     parser.add_argument('--replace_illegal_char', type=strtobool, default=False)
-    parser.add_argument('--ori_data_path', type=str, default='/store/data', help='the root path to raw data')
+    parser.add_argument('--ori_data_path', type=str, default='./data', help='the root path to raw data')
     parser.add_argument('--data_path', type=str, default='./data', help='the path to processed data (splitted into tasks)')
     parser.add_argument('--result_path', type=str, default='./results', help='the path for saving results')
     parser.add_argument('--overwrite_result', type=strtobool, default=False, help='whether to overwrite existing results')
@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
                     # choose the best configuration according to the validation results
                     acc_matrices.append(acc_matrix)
-                    torch.cuda.empty_cache()
+                  #torch.cuda.empty_cache()
                     if ite == 0:
                         with open(
                                 f'{args.result_path}/log.txt',
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                     acc_matrices = traceback.format_exc()
                     print(acc_matrices)
                     print('error happens on \n', name)
-                    torch.cuda.empty_cache()
+                  #torch.cuda.empty_cache()
                     break
             if np.mean(AP_dict[hyp_params_str]) > AP_best:
                 AP_best = np.mean(AP_dict[hyp_params_str])

@@ -3,7 +3,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 def MultiClassCrossEntropy(logits, labels, T):
-    labels = Variable(labels.data, requires_grad=False).cuda()
+    labels = Variable(labels.data, requires_grad=False).cpu()
     outputs = torch.log_softmax(logits/T, dim=1)   # compute the log of softmax values
     labels = torch.softmax(labels/T, dim=1)
     outputs = torch.sum(outputs * labels, dim=1, keepdim=False)
@@ -97,7 +97,7 @@ class NET(torch.nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
 
         # Whether the total number of dimensions are pre-defined or increase with the incoming of new tasks
         if args.classifier_increase:

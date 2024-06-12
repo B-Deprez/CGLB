@@ -73,7 +73,7 @@ class NET(torch.nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
         if args.classifier_increase:
             loss = self.ce(output[train_ids,offset1:offset2], labels[train_ids], weight=loss_w_[offset1: offset2])
         else:
@@ -87,14 +87,14 @@ class NET(torch.nn.Module):
             self.buffer_node_ids.extend(old_ids[sampled_ids].tolist())
             if t>0:
                 g, __, _ = dataset.get_graph(node_ids=self.buffer_node_ids)
-                self.aux_g = g.to(device='cuda:{}'.format(features.get_device()))
+                self.aux_g = g.to('cpu')
                 self.aux_features, self.aux_labels = self.aux_g.srcdata['feat'], self.aux_g.dstdata['label'].squeeze()
                 if args.cls_balance:
                     n_per_cls = [(self.aux_labels == j).sum() for j in range(args.n_cls)]
                     loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
                 else:
                     loss_w_ = [1. for i in range(args.n_cls)]
-                self.aux_loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+                self.aux_loss_w_ = torch.tensor(loss_w_).to('cpu')
 
         if t!=0:
             # calculate auxiliary loss based on replay if not the first task
@@ -144,7 +144,7 @@ class NET(torch.nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
         loss = self.ce(output[train_ids, offset1:offset2], output_labels-offset1, weight=loss_w_[offset1: offset2])
 
         if t!=self.current_task:
@@ -153,13 +153,13 @@ class NET(torch.nn.Module):
             old_ids = g.ndata['_ID'].cpu()
             self.buffer_node_ids[t] = old_ids[sampled_ids].tolist()
             g, __, _ = dataset.get_graph(node_ids=self.buffer_node_ids[t])
-            self.aux_g.append(g.to(device='cuda:{}'.format(features.get_device())))
+            self.aux_g.append(g.to('cpu'))
             if args.cls_balance:
                 n_per_cls = [(labels[sampled_ids] == j).sum() for j in range(args.n_cls)]
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             self.aux_loss_w_.append(loss_w_)
 
         if t!=0:
@@ -204,7 +204,7 @@ class NET(torch.nn.Module):
                 buffer_size += len(self.buffer_node_ids[k])
             beta = buffer_size / (buffer_size + n_nodes_current_batch)
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
 
@@ -213,7 +213,7 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_labels = output_labels - offset1
             output_predictions,_ = self.net.forward_batch(blocks, input_features)
             loss = self.ce(output_predictions[:, offset1:offset2], output_labels, weight=loss_w_[offset1: offset2])
@@ -221,17 +221,17 @@ class NET(torch.nn.Module):
             # sample and store ids from current task
             if t != self.current_task:
                 self.current_task = t
-                sampled_ids = self.sampler(ids_per_cls_train, self.budget, features.to(device='cuda:{}'.format(args.gpu)), self.net.second_last_h, self.d_CM)
+                sampled_ids = self.sampler(ids_per_cls_train, self.budget, features.to('cpu'), self.net.second_last_h, self.d_CM)
                 old_ids = g.ndata['_ID'].cpu()
                 self.buffer_node_ids[t] = old_ids[sampled_ids].tolist()
                 ag, __, _ = dataset.get_graph(node_ids=self.buffer_node_ids[t])
-                self.aux_g.append(ag.to(device='cuda:{}'.format(args.gpu)))
+                self.aux_g.append(ag.to('cpu'))
                 if args.cls_balance:
                     n_per_cls = [(labels[sampled_ids] == j).sum() for j in range(args.n_cls)]
                     loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
                 else:
                     loss_w_ = [1. for i in range(args.n_cls)]
-                loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+                loss_w_ = torch.tensor(loss_w_).to('cpu')
                 self.aux_loss_w_.append(loss_w_)
 
             if t != 0:
@@ -272,7 +272,7 @@ class NET(torch.nn.Module):
             buffer_size = len(self.buffer_node_ids)
             beta = buffer_size / (buffer_size + n_nodes_current_batch)
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
 
@@ -281,19 +281,19 @@ class NET(torch.nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_predictions,_ = self.net.forward_batch(blocks, input_features)
             loss = self.ce(output_predictions[:, offset1:offset2], output_labels, weight=loss_w_[offset1: offset2])
 
             # sample and store ids from current task
             if t != self.current_task:
                 self.current_task = t
-                sampled_ids = self.sampler(ids_per_cls_train, self.budget, features.to(device='cuda:{}'.format(args.gpu)), self.net.second_last_h, self.d_CM, using_half=False)
+                sampled_ids = self.sampler(ids_per_cls_train, self.budget, features.to('cpu'), self.net.second_last_h, self.d_CM, using_half=False)
                 old_ids = g.ndata['_ID'].cpu()
                 self.buffer_node_ids.extend(old_ids[sampled_ids].tolist())
                 if t > 0:
                     g, __, _ = dataset.get_graph(node_ids=self.buffer_node_ids)
-                    self.aux_g = g.to(device='cuda:{}'.format(args.gpu))
+                    self.aux_g = g.to('cpu')
                     self.aux_features, self.aux_labels = self.aux_g.srcdata['feat'], self.aux_g.dstdata['label'].squeeze()
 
                     if args.cls_balance:
@@ -301,7 +301,7 @@ class NET(torch.nn.Module):
                         loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
                     else:
                         loss_w_ = [1. for i in range(args.n_cls)]
-                    self.aux_loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+                    self.aux_loss_w_ = torch.tensor(loss_w_).to('cpu')
             if t != 0:
                 output, _ = self.net(self.aux_g, self.aux_features)
                 if args.classifier_increase:

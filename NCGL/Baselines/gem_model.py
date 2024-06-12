@@ -43,7 +43,7 @@ class NET(nn.Module):
         self.grad_dims = []
         for param in self.net.parameters():
             self.grad_dims.append(param.data.numel())
-        self.grads = torch.Tensor(sum(self.grad_dims), len(args.task_seq)).cuda()
+        self.grads = torch.Tensor(sum(self.grad_dims), len(args.task_seq)).cpu()
         
         # allocate counters
         self.observed_tasks = []
@@ -87,7 +87,7 @@ class NET(nn.Module):
                 subgraph, ids_per_cls, [train_ids_, valid_ids, test_ids] = pickle.load(open(
                     f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[old_task_i]}.pkl', 'rb'))
 
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             features_, labels_ = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
             self.net.zero_grad()
 
@@ -112,7 +112,7 @@ class NET(nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
         if args.classifier_increase:
             loss = self.ce(output[train_ids, offset1:offset2], output_labels, weight=loss_w_[offset1: offset2])
         else:
@@ -124,7 +124,7 @@ class NET(nn.Module):
         if len(self.observed_tasks) > 1:
             # copy gradient
             store_grad(self.net.parameters, self.grads, self.grad_dims, t)
-            indx = torch.cuda.LongTensor(self.observed_tasks[:-1])
+            indx = torch.LongTensor(self.observed_tasks[:-1])
             dotp = torch.mm(self.grads[:, t].unsqueeze(0),
                             self.grads.index_select(1, indx))
             if (dotp < 0).sum() != 0:
@@ -168,7 +168,7 @@ class NET(nn.Module):
             else:
                 subgraph, ids_per_cls, [train_ids_, valid_ids, test_ids] = pickle.load(open(
                     f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[old_task_i]}.pkl','rb'))
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             features_, labels_ = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
             self.net.zero_grad()
 
@@ -182,7 +182,7 @@ class NET(nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
 
             old_task_loss = self.ce(output[self.memory_data[old_task_i], offset1: offset2], output_labels_-offset1, weight=loss_w_[offset1: offset2])
 
@@ -199,7 +199,7 @@ class NET(nn.Module):
             loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
         else:
             loss_w_ = [1. for i in range(args.n_cls)]
-        loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+        loss_w_ = torch.tensor(loss_w_).to('cpu')
         loss = self.ce(output[train_ids, offset1:offset2], output_labels, weight=loss_w_[offset1: offset2])
         loss.backward()
 
@@ -207,7 +207,7 @@ class NET(nn.Module):
         if len(self.observed_tasks) > 1:
             # copy gradient
             store_grad(self.net.parameters, self.grads, self.grad_dims, t)
-            indx = torch.cuda.LongTensor(self.observed_tasks[:-1])
+            indx = torch.LongTensor(self.observed_tasks[:-1])
             dotp = torch.mm(self.grads[:, t].unsqueeze(0), self.grads.index_select(1, indx))
             if (dotp < 0).sum() != 0:
                 project2cone2(self.grads[:, t].unsqueeze(1), self.grads.index_select(1, indx), self.margin)
@@ -251,7 +251,7 @@ class NET(nn.Module):
             else:
                 subgraph, ids_per_cls, [train_ids_, valid_ids, test_ids] = pickle.load(open(
                     f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[old_task_i]}.pkl', 'rb'))
-            # subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            # subgraph = subgraph.to('cpu')
             old_dataloader = dgl.dataloading.NodeDataLoader(subgraph.cpu(),
                                                             self.memory_data[old_task_i],
                                                             args.nb_sampler,
@@ -260,7 +260,7 @@ class NET(nn.Module):
                                                             drop_last=False)
             for input_nodes, output_nodes, blocks in old_dataloader:
                 self.net.zero_grad()
-                blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+                blocks = [b.to('cpu') for b in blocks]
                 input_features = blocks[0].srcdata['feat']
                 output_labels = blocks[-1].dstdata['label'].squeeze()
                 if args.cls_balance:
@@ -268,7 +268,7 @@ class NET(nn.Module):
                     loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
                 else:
                     loss_w_ = [1. for i in range(args.n_cls)]
-                loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+                loss_w_ = torch.tensor(loss_w_).to('cpu')
                 output_labels = output_labels - offset1
                 output_predictions, _ = self.net.forward_batch(blocks, input_features)
                 if args.classifier_increase:
@@ -287,7 +287,7 @@ class NET(nn.Module):
         no_solution_ind = 0
         for input_nodes, output_nodes, blocks in dataloader:
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
             #output_labels = output_labels - offset1
@@ -296,7 +296,7 @@ class NET(nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_labels = output_labels - offset1
 
             output_predictions,_ = self.net.forward_batch(blocks, input_features)
@@ -309,7 +309,7 @@ class NET(nn.Module):
             if len(self.observed_tasks) > 1:
                 # copy gradient
                 store_grad(self.net.parameters, self.grads, self.grad_dims, t)
-                indx = torch.cuda.LongTensor(self.observed_tasks[:-1])
+                indx = torch.LongTensor(self.observed_tasks[:-1])
                 dotp = torch.mm(self.grads[:, t].unsqueeze(0), self.grads.index_select(1, indx))
                 if (dotp < 0).sum() != 0:
                     try:
@@ -324,7 +324,7 @@ class NET(nn.Module):
 
             self.opt.step()
             gc.collect()
-            torch.cuda.empty_cache()
+          #torch.cuda.empty_cache()
 
 
     def observe_class_IL_batch(self, args, g, dataloader, features, labels, t, train_ids, ids_per_cls, dataset):
@@ -372,7 +372,7 @@ class NET(nn.Module):
             offset1, offset2 = self.task_manager.get_label_offset(old_task_i)
             for input_nodes, output_nodes, blocks in self.old_dataloaders[old_task_i]:
                 self.net.zero_grad()
-                blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+                blocks = [b.to('cpu') for b in blocks]
                 input_features = blocks[0].srcdata['feat']
                 output_labels = blocks[-1].dstdata['label'].squeeze()
                 if args.cls_balance:
@@ -380,7 +380,7 @@ class NET(nn.Module):
                     loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
                 else:
                     loss_w_ = [1. for i in range(args.n_cls)]
-                loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+                loss_w_ = torch.tensor(loss_w_).to('cpu')
                 output_predictions, _ = self.net.forward_batch(blocks, input_features)
                 if args.classifier_increase:
                     old_task_loss_ = self.ce(output_predictions[:, offset1:offset2], output_labels,
@@ -397,7 +397,7 @@ class NET(nn.Module):
         no_solution_ind = 0
         for input_nodes, output_nodes, blocks in dataloader:
             self.net.zero_grad()
-            blocks = [b.to(device='cuda:{}'.format(args.gpu)) for b in blocks]
+            blocks = [b.to('cpu') for b in blocks]
             input_features = blocks[0].srcdata['feat']
             output_labels = blocks[-1].dstdata['label'].squeeze()
             if args.cls_balance:
@@ -405,7 +405,7 @@ class NET(nn.Module):
                 loss_w_ = [1. / max(i, 1) for i in n_per_cls]  # weight to balance the loss of different class
             else:
                 loss_w_ = [1. for i in range(args.n_cls)]
-            loss_w_ = torch.tensor(loss_w_).to(device='cuda:{}'.format(args.gpu))
+            loss_w_ = torch.tensor(loss_w_).to('cpu')
             output_predictions,_ = self.net.forward_batch(blocks, input_features)
             if args.classifier_increase:
                 loss = self.ce(output_predictions[:, offset1:offset2], output_labels, weight=loss_w_[offset1: offset2])
@@ -416,7 +416,7 @@ class NET(nn.Module):
             if len(self.observed_tasks) > 1:
                 # copy gradient
                 store_grad(self.net.parameters, self.grads, self.grad_dims, t)
-                indx = torch.cuda.LongTensor(self.observed_tasks[:-1])
+                indx = torch.LongTensor(self.observed_tasks[:-1])
                 dotp = torch.mm(self.grads[:, t].unsqueeze(0), self.grads.index_select(1, indx))
                 if (dotp < 0).sum() != 0:
                     try:

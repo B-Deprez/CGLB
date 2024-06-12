@@ -66,7 +66,7 @@ def data_prepare(args):
     check whether the processed data exist or create new processed data
     if args.load_check is True, loading data will be tried, else, will only check the existence of the files
     """
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -106,14 +106,14 @@ def data_prepare(args):
 def pipeline_task_IL_no_inter_edge(args, valid=False):
     # valid=True denotes the evaluation is done on validation set, otherwise on testing set
     epochs = args.epochs if valid else 0 # training epochs is zero for testing mode
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)] # this line will remove the final task if only one class included
     args.task_seq = cls
     args.n_tasks = len(args.task_seq)
     task_manager = semi_task_manager()
-    model = get_model(dataset, args).cuda(args.gpu) if valid else None
+    model = get_model(dataset, args).cpu() if valid else None
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
     acc_matrix = np.zeros([args.n_tasks, args.n_tasks])
@@ -131,7 +131,7 @@ def pipeline_task_IL_no_inter_edge(args, valid=False):
         subgraph, ids_per_cls, [train_ids, valid_ids, test_ids] = pickle.load(open(
                 f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{task_cls}.pkl', 'rb'))
 
-        subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+        subgraph = subgraph.to('cpu')
         features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
         task_manager.add_task(task, n_cls_so_far)
 
@@ -143,7 +143,7 @@ def pipeline_task_IL_no_inter_edge(args, valid=False):
                 life_model_ins.observe_task_IL(args, subgraph, features, labels, task, train_ids, ids_per_cls, dataset)
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -151,7 +151,7 @@ def pipeline_task_IL_no_inter_edge(args, valid=False):
             subgraph, ids_per_cls, [train_ids, valid_ids_, test_ids_] = pickle.load(open(
                     f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[t]}.pkl','rb'))
             test_ids = valid_ids_ if valid else test_ids_  # whether use validation or test set
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             ids_per_cls_test = [list(set(ids).intersection(set(test_ids))) for ids in ids_per_cls]
             features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
             label_offset1, label_offset2 = task_manager.get_label_offset(t - 1)[1], task_manager.get_label_offset(t)[1]
@@ -181,7 +181,7 @@ def pipeline_task_IL_no_inter_edge(args, valid=False):
                     pickle.dump(model, f) # save the best model for each hyperparameter composition
             except:
                 torch.save(model.state_dict(), save_model_path.replace('.pkl','.pt'))  # save the best model for each hyperparameter composition
-        prev_model = copy.deepcopy(model).cuda(args.gpu)
+        prev_model = copy.deepcopy(model).cpu()
 
     print('AP: ', acc_mean)
     backward = []
@@ -195,7 +195,7 @@ def pipeline_task_IL_no_inter_edge(args, valid=False):
 
 def pipeline_task_IL_inter_edge(args, valid=False):
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -204,7 +204,7 @@ def pipeline_task_IL_inter_edge(args, valid=False):
 
     task_manager = semi_task_manager()
 
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -226,7 +226,7 @@ def pipeline_task_IL_inter_edge(args, valid=False):
         subgraph, ids_per_cls_all, [train_ids, valid_ids_, test_ids_] = pickle.load(open(
             f'{args.data_path}/inter_tsk_edge/{args.dataset}_{task_cls}.pkl', 'rb'))
         test_ids = valid_ids_ if valid else test_ids_
-        subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+        subgraph = subgraph.to('cpu')
         features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
         task_manager.add_task(task, n_cls_so_far)
 
@@ -248,7 +248,7 @@ def pipeline_task_IL_inter_edge(args, valid=False):
         # test
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -283,7 +283,7 @@ def pipeline_task_IL_inter_edge(args, valid=False):
                     pickle.dump(model, f) # save the best model for each hyperparameter composition
             except:
                 torch.save(model.state_dict(), save_model_path.replace('.pkl','.pt'))
-        prev_model = copy.deepcopy(model).cuda()
+        prev_model = copy.deepcopy(model).cpu()
 
     print('AP: ', acc_mean)
     backward = []
@@ -299,14 +299,14 @@ def pipeline_task_IL_inter_edge(args, valid=False):
 def pipeline_task_IL_no_inter_edge_joint(args, valid=False):
     args.method = 'joint_replay_all'
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
     args.task_seq = cls
     args.n_tasks = len(args.task_seq)
     task_manager = semi_task_manager()
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
     acc_matrix = np.zeros([args.n_tasks, args.n_tasks])
@@ -325,7 +325,7 @@ def pipeline_task_IL_no_inter_edge_joint(args, valid=False):
         for t in range(task + 1):
             subgraph, ids_per_cls, [train_ids, valid_ids, test_ids] = pickle.load(open(
                 f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[t]}.pkl', 'rb'))
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
             subgraphs.append(subgraph)
             featuress.append(features)
@@ -338,14 +338,14 @@ def pipeline_task_IL_no_inter_edge_joint(args, valid=False):
 
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
         for t in range(task + 1):
             subgraph, ids_per_cls, [train_ids, valid_ids_, test_ids_] = pickle.load(open(
                 f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[t]}.pkl', 'rb'))
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             test_ids = valid_ids_ if valid else test_ids_
             ids_per_cls_test = [list(set(ids).intersection(set(test_ids))) for ids in ids_per_cls]
             features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
@@ -389,7 +389,7 @@ def pipeline_task_IL_no_inter_edge_joint(args, valid=False):
 def pipeline_task_IL_inter_edge_joint(args, valid=False):
     args.method = 'joint_replay_all'
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -398,7 +398,7 @@ def pipeline_task_IL_inter_edge_joint(args, valid=False):
 
     task_manager = semi_task_manager()
 
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -424,7 +424,7 @@ def pipeline_task_IL_inter_edge_joint(args, valid=False):
         subgraph, ids_per_cls_all, [train_ids, valid_ids_, test_ids_] = pickle.load(
             open(f'{args.data_path}/inter_tsk_edge/{args.dataset}_{task_cls}.pkl', 'rb'))
         test_ids = valid_ids_ if valid else test_ids_
-        subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+        subgraph = subgraph.to('cpu')
         features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
         subgraphs = subgraph
         featuress = features
@@ -437,7 +437,7 @@ def pipeline_task_IL_inter_edge_joint(args, valid=False):
 
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -488,14 +488,14 @@ def pipeline_task_IL_inter_edge_joint(args, valid=False):
 
 def pipeline_class_IL_no_inter_edge(args, valid=False):
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
     args.task_seq = cls
     args.n_tasks = len(args.task_seq)
     task_manager = semi_task_manager()
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
     acc_matrix = np.zeros([args.n_tasks, args.n_tasks])
@@ -512,7 +512,7 @@ def pipeline_class_IL_no_inter_edge(args, valid=False):
         n_cls_so_far+=len(task_cls)
         subgraph, ids_per_cls, [train_ids, valid_ids, test_ids] = pickle.load(
             open(f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{task_cls}.pkl', 'rb'))
-        subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+        subgraph = subgraph.to('cpu')
         features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
         task_manager.add_task(task, n_cls_so_far)
         label_offset1, label_offset2 = task_manager.get_label_offset(task)
@@ -523,11 +523,11 @@ def pipeline_class_IL_no_inter_edge(args, valid=False):
                 life_model_ins.observe(args, subgraph, features, labels, task, prev_model, train_ids, ids_per_cls, dataset)
             else:
                 life_model_ins.observe(args, subgraph, features, labels, task, train_ids, ids_per_cls, dataset)
-                torch.cuda.empty_cache()
+              #torch.cuda.empty_cache()
 
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -535,7 +535,7 @@ def pipeline_class_IL_no_inter_edge(args, valid=False):
         for t in range(task+1):
             subgraph, ids_per_cls, [train_ids, valid_ids_, test_ids_] = pickle.load(open(
                 f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[t]}.pkl', 'rb'))
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             test_ids = valid_ids_ if valid else test_ids_
             ids_per_cls_test = [list(set(ids).intersection(set(test_ids))) for ids in ids_per_cls]
             features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
@@ -561,7 +561,7 @@ def pipeline_class_IL_no_inter_edge(args, valid=False):
                     pickle.dump(model, f) # save the best model for each hyperparameter composition
             except:
                 torch.save(model.state_dict(), save_model_path.replace('.pkl','.pt'))
-        prev_model = copy.deepcopy(model).cuda()
+        prev_model = copy.deepcopy(model).cpu()
 
     print('AP: ', acc_mean)
     backward = []
@@ -575,7 +575,7 @@ def pipeline_class_IL_no_inter_edge(args, valid=False):
 
 def pipeline_class_IL_inter_edge(args, valid=False):
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -584,7 +584,7 @@ def pipeline_class_IL_inter_edge(args, valid=False):
 
     task_manager = semi_task_manager()
 
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -606,7 +606,7 @@ def pipeline_class_IL_inter_edge(args, valid=False):
         subgraph, ids_per_cls_all, [train_ids, valid_ids_, test_ids_] = pickle.load(open(
             f'{args.data_path}/inter_tsk_edge/{args.dataset}_{task_cls}.pkl', 'rb'))
         test_ids = valid_ids_ if valid else test_ids_
-        subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+        subgraph = subgraph.to('cpu')
         features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
         task_manager.add_task(task, n_cls_so_far)
 
@@ -629,7 +629,7 @@ def pipeline_class_IL_inter_edge(args, valid=False):
         label_offset1, label_offset2 = task_manager.get_label_offset(task)
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -662,7 +662,7 @@ def pipeline_class_IL_inter_edge(args, valid=False):
                     pickle.dump(model, f) # save the best model for each hyperparameter composition
             except:
                 torch.save(model.state_dict(), save_model_path.replace('.pkl','.pt'))
-        prev_model = copy.deepcopy(model).cuda()
+        prev_model = copy.deepcopy(model).cpu()
 
     print('AP: ', acc_mean)
     backward = []
@@ -678,14 +678,14 @@ def pipeline_class_IL_inter_edge(args, valid=False):
 def pipeline_class_IL_no_inter_edge_joint(args, valid=False):
     args.method = 'joint_replay_all'
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
     args.task_seq = cls
     args.n_tasks = len(args.task_seq)
     task_manager = semi_task_manager()
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
     acc_matrix = np.zeros([args.n_tasks, args.n_tasks])
@@ -704,7 +704,7 @@ def pipeline_class_IL_no_inter_edge_joint(args, valid=False):
         for t in range(task + 1):
             subgraph, ids_per_cls, [train_ids, valid_idx, test_ids] = pickle.load(open(
                 f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[t]}.pkl', 'rb'))
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
             subgraphs.append(subgraph)
             featuress.append(features)
@@ -718,14 +718,14 @@ def pipeline_class_IL_no_inter_edge_joint(args, valid=False):
         label_offset1, label_offset2 = task_manager.get_label_offset(task)
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
         for t in range(task + 1):
             subgraph, ids_per_cls, [train_ids, valid_ids_, test_ids_] = pickle.load(open(
                 f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[t]}.pkl', 'rb'))
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             test_ids = valid_ids_ if valid else test_ids_
             ids_per_cls_test = [list(set(ids).intersection(set(test_ids))) for ids in ids_per_cls]
             features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
@@ -767,7 +767,7 @@ def pipeline_class_IL_no_inter_edge_joint(args, valid=False):
 def pipeline_class_IL_inter_edge_joint(args, valid=False):
     args.method = 'joint_replay_all'
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -776,7 +776,7 @@ def pipeline_class_IL_inter_edge_joint(args, valid=False):
 
     task_manager = semi_task_manager()
 
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -802,7 +802,7 @@ def pipeline_class_IL_inter_edge_joint(args, valid=False):
         subgraph, ids_per_cls_all, [train_ids, valid_ids_, test_ids_] = pickle.load(
             open(f'{args.data_path}/inter_tsk_edge/{args.dataset}_{task_cls}.pkl', 'rb'))
         test_ids = valid_ids_ if valid else test_ids_
-        subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+        subgraph = subgraph.to('cpu')
         features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
 
         for epoch in range(epochs):
@@ -810,7 +810,7 @@ def pipeline_class_IL_inter_edge_joint(args, valid=False):
 
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -860,7 +860,7 @@ def pipeline_class_IL_inter_edge_joint(args, valid=False):
 
 def pipeline_task_IL_no_inter_edge_minibatch(args, valid=False):
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -869,7 +869,7 @@ def pipeline_task_IL_no_inter_edge_minibatch(args, valid=False):
 
     task_manager = semi_task_manager()
 
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -902,13 +902,13 @@ def pipeline_task_IL_no_inter_edge_minibatch(args, valid=False):
                                        dataset)
             else:
                 life_model_ins.observe_task_IL_batch(args, subgraph, dataloader, features, labels, task, train_ids, ids_per_cls, dataset)
-                torch.cuda.empty_cache()  # tracemalloc.stop()
+              #torch.cuda.empty_cache()  # tracemalloc.stop()
 
 
         # test
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -939,7 +939,7 @@ def pipeline_task_IL_no_inter_edge_minibatch(args, valid=False):
                     pickle.dump(model, f) # save the best model for each hyperparameter composition
             except:
                 torch.save(model.state_dict(), save_model_path.replace('.pkl','.pt'))
-        prev_model = copy.deepcopy(model).cuda()
+        prev_model = copy.deepcopy(model).cpu()
 
     print('AP: ', acc_mean)
     backward = []
@@ -956,14 +956,14 @@ def pipeline_task_IL_no_inter_edge_minibatch(args, valid=False):
 def pipeline_task_IL_no_inter_edge_minibatch_joint(args, valid=False):
     args.method = 'joint_replay_all'
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
     args.task_seq = cls
     args.n_tasks = len(args.task_seq)
     task_manager = semi_task_manager()
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
     acc_matrix = np.zeros([args.n_tasks, args.n_tasks])
@@ -1007,13 +1007,13 @@ def pipeline_task_IL_no_inter_edge_minibatch_joint(args, valid=False):
 
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
         for t in range(task + 1):
             subgraph, ids_per_cls, [train_ids, valid_ids_, test_ids_] = pickle.load(open(f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[t]}.pkl', 'rb'))
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             test_ids = valid_ids_ if valid else test_ids_
             ids_per_cls_test = [list(set(ids).intersection(set(test_ids))) for ids in ids_per_cls]
             features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
@@ -1057,14 +1057,14 @@ def pipeline_task_IL_no_inter_edge_minibatch_joint(args, valid=False):
 def pipeline_class_IL_no_inter_edge_minibatch_joint(args, valid=False):
     args.method = 'joint_replay_all'
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
     args.task_seq = cls
     args.n_tasks = len(args.task_seq)
     task_manager = semi_task_manager()
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
     acc_matrix = np.zeros([args.n_tasks, args.n_tasks])
@@ -1108,14 +1108,14 @@ def pipeline_class_IL_no_inter_edge_minibatch_joint(args, valid=False):
 
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
         label_offset1, label_offset2 = task_manager.get_label_offset(task)
         for t in range(task + 1):
             subgraph, ids_per_cls, [train_ids, valid_ids_, test_ids_] = pickle.load(open(f'{args.data_path}/no_inter_tsk_edge/{args.dataset}_{args.task_seq[t]}.pkl', 'rb'))
-            subgraph = subgraph.to(device='cuda:{}'.format(args.gpu))
+            subgraph = subgraph.to('cpu')
             test_ids = valid_ids_ if valid else test_ids_
             ids_per_cls_test = [list(set(ids).intersection(set(test_ids))) for ids in ids_per_cls]
             features, labels = subgraph.srcdata['feat'], subgraph.dstdata['label'].squeeze()
@@ -1157,7 +1157,7 @@ def pipeline_class_IL_no_inter_edge_minibatch_joint(args, valid=False):
 
 def pipeline_class_IL_no_inter_edge_minibatch(args, valid=False):
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -1166,7 +1166,7 @@ def pipeline_class_IL_no_inter_edge_minibatch(args, valid=False):
 
     task_manager = semi_task_manager()
 
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -1199,14 +1199,14 @@ def pipeline_class_IL_no_inter_edge_minibatch(args, valid=False):
                                        dataset)
             else:
                 life_model_ins.observe_class_IL_batch(args, subgraph, dataloader, features, labels, task, train_ids, ids_per_cls, dataset)
-                torch.cuda.empty_cache()  # tracemalloc.stop()
+              #torch.cuda.empty_cache()  # tracemalloc.stop()
 
 
         label_offset1, label_offset2 = task_manager.get_label_offset(task)
         # test
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -1235,7 +1235,7 @@ def pipeline_class_IL_no_inter_edge_minibatch(args, valid=False):
                     pickle.dump(model, f) # save the best model for each hyperparameter composition
             except:
                 torch.save(model.state_dict(), save_model_path.replace('.pkl','.pt'))
-        prev_model = copy.deepcopy(model).cuda()
+        prev_model = copy.deepcopy(model).cpu()
 
     print('AP: ', acc_mean)
     backward = []
@@ -1249,14 +1249,14 @@ def pipeline_class_IL_no_inter_edge_minibatch(args, valid=False):
 
 def pipeline_task_IL_inter_edge_minibatch(args, valid=False):
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
     args.task_seq = cls
     args.n_tasks = len(args.task_seq)
     task_manager = semi_task_manager()
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -1300,12 +1300,12 @@ def pipeline_task_IL_inter_edge_minibatch(args, valid=False):
             else:
                 life_model_ins.observe_task_IL_batch(args, subgraph, dataloader, features, labels, task, train_ids_current_task,
                                                ids_per_cls_current_task, dataset)
-                torch.cuda.empty_cache()
+              #torch.cuda.empty_cache()
 
         # test
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -1340,7 +1340,7 @@ def pipeline_task_IL_inter_edge_minibatch(args, valid=False):
                     pickle.dump(model, f) # save the best model for each hyperparameter composition
             except:
                 torch.save(model.state_dict(), save_model_path.replace('.pkl','.pt'))
-        prev_model = copy.deepcopy(model).cuda()
+        prev_model = copy.deepcopy(model).cpu()
 
     print('AP: ', acc_mean)
     backward = []
@@ -1356,7 +1356,7 @@ def pipeline_task_IL_inter_edge_minibatch(args, valid=False):
 def pipeline_task_IL_inter_edge_minibatch_joint(args, valid=False):
     args.method = 'joint_replay_all'
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -1365,7 +1365,7 @@ def pipeline_task_IL_inter_edge_minibatch_joint(args, valid=False):
 
     task_manager = semi_task_manager()
 
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -1401,7 +1401,7 @@ def pipeline_task_IL_inter_edge_minibatch_joint(args, valid=False):
 
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -1451,14 +1451,14 @@ def pipeline_task_IL_inter_edge_minibatch_joint(args, valid=False):
 
 def pipeline_class_IL_inter_edge_minibatch(args, valid=False):
     epochs = args.epochs if valid else 0
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
     args.task_seq = cls
     args.n_tasks = len(args.task_seq)
     task_manager = semi_task_manager()
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -1507,7 +1507,7 @@ def pipeline_class_IL_inter_edge_minibatch(args, valid=False):
         label_offset1, label_offset2 = task_manager.get_label_offset(task)
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
@@ -1540,7 +1540,7 @@ def pipeline_class_IL_inter_edge_minibatch(args, valid=False):
                     pickle.dump(model, f) # save the best model for each hyperparameter composition
             except:
                 torch.save(model.state_dict(), save_model_path.replace('.pkl','.pt'))
-        prev_model = copy.deepcopy(model).cuda()
+        prev_model = copy.deepcopy(model).cpu()
 
     print('AP: ', acc_mean)
     backward = []
@@ -1556,7 +1556,7 @@ def pipeline_class_IL_inter_edge_minibatch(args, valid=False):
 def pipeline_class_IL_inter_edge_minibatch_joint(args, valid=False):
     epochs = args.epochs if valid else 0
     args.method = 'joint_replay_all'
-    torch.cuda.set_device(args.gpu)
+  #torch.cuda.set_device(args.gpu)
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
@@ -1565,7 +1565,7 @@ def pipeline_class_IL_inter_edge_minibatch_joint(args, valid=False):
 
     task_manager = semi_task_manager()
 
-    model = get_model(dataset, args).cuda(args.gpu)
+    model = get_model(dataset, args).cpu()
     life_model = importlib.import_module(f'Baselines.{args.method}')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
 
@@ -1598,7 +1598,7 @@ def pipeline_class_IL_inter_edge_minibatch_joint(args, valid=False):
 
         if not valid:
             try:
-                model = pickle.load(open(save_model_path,'rb')).cuda(args.gpu)
+                model = pickle.load(open(save_model_path,'rb')).cpu()
             except:
                 model.load_state_dict(torch.load(save_model_path.replace('.pkl','.pt')))
         acc_mean = []
