@@ -10,12 +10,14 @@ import pandas as pd
 class EllipticDataset(DGLDataset):
     def __init__(self):
         super().__init__(name="elliptic")
-        self.num_classes = 2#*49
+        self.num_classes = 2*49 # Classes are different for each time period (49 time periods)
 
     def process(self):
         node_data = pd.read_csv("NCGL/data/elliptic/elliptic_txs_features.csv", header=None)
         label_data = pd.read_csv("NCGL/data/elliptic/elliptic_txs_classes.csv")
         edge_data = pd.read_csv("NCGL/data/elliptic/elliptic_txs_edgelist.csv")
+
+        self._taskLabels()
 
         map_id = {j:i for i,j in enumerate(node_data[0])}
 
@@ -45,6 +47,22 @@ class EllipticDataset(DGLDataset):
     
     def __len__(self):
         return 1
+    
+    def _taskLabels(self):
+        node_data_period_df = self.node_data[[0,1]]
+        data = pd.merge(node_data_period_df, self.label_data, left_on=0, right_on = "txId", how='left')[['txId', 1, 'class']]
+        data.columns = ['txId', 'time_step', 'class']
+
+        column_task_class = []
+        for i, row in data.iterrows():
+            if row['class'] == 'unknown':
+                column_task_class.append(-1)
+            else:
+                task_class = (int(row['time_step'])-1)*2 + ( int(row['class']) - 1 )
+                column_task_class.append(task_class)
+        
+        self.label_data['class'] = column_task_class
+        
     
 dataset  = EllipticDataset()
 graph = dataset[0]
