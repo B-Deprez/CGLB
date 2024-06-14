@@ -13,6 +13,7 @@ import dgl
 joint_alias = ['joint', 'Joint', 'joint_replay_all', 'jointtrain']
 def get_pipeline(args):
     # choose the pipeline for the chosen setting
+    # This is the main function that will be called in the main.py
     if args.minibatch:
         if args.ILmode == 'classIL':
             if args.inter_task_edges:
@@ -47,7 +48,7 @@ def get_pipeline(args):
                 if args.method in joint_alias:
                     return pipeline_class_IL_no_inter_edge_joint
                 else:
-                    return pipeline_class_IL_no_inter_edge
+                    return pipeline_class_IL_no_inter_edge # Start with changing this one
         elif args.ILmode == 'taskIL':
             if args.inter_task_edges:
                 if args.method in joint_alias:
@@ -60,6 +61,14 @@ def get_pipeline(args):
                 else:
                     return pipeline_task_IL_no_inter_edge
 
+def define_tasks(args): # This should be its own pipeline, not a part of the main pipeline
+    if args.same_labels:
+        if args.tasks_provided: # The case where tasks are provided and labels are shared. This is the case for the elliptic dataset
+            pass
+        else:
+            pass # labels are shared, but tasks are not provided. 
+    else: # Default setting as in the original CGLB paper
+        pass
 
 def data_prepare(args):
     """
@@ -492,10 +501,10 @@ def pipeline_class_IL_no_inter_edge(args, valid=False):
     dataset = NodeLevelDataset(args.dataset,ratio_valid_test=args.ratio_valid_test,args=args)
     args.d_data, args.n_cls = dataset.d_data, dataset.n_cls
     cls = [list(range(i, i + args.n_cls_per_task)) for i in range(0, args.n_cls-1, args.n_cls_per_task)]
-    args.task_seq = cls
-    args.n_tasks = len(args.task_seq)
-    task_manager = semi_task_manager()
-    model = get_model(dataset, args).cpu()
+    args.task_seq = cls # Task_seq is a list of lists, where each list contains the classes for a task, e.g., [[0,1], [2,3], [4,5]] 
+    args.n_tasks = len(args.task_seq) # Number of tasks
+    task_manager = semi_task_manager() # Imported from dataset.utils
+    model = get_model(dataset, args).cpu() # From backbone.model_factory
     life_model = importlib.import_module(f'Baselines.{args.method}_model')
     life_model_ins = life_model.NET(model, task_manager, args) if valid else None
     acc_matrix = np.zeros([args.n_tasks, args.n_tasks])

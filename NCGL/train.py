@@ -5,7 +5,7 @@ import argparse
 from training.utils import set_seed, mkdir_if_missing, remove_illegal_characters,str2dict,compose_hyper_params,assign_hyp_param
 from distutils.util import strtobool
 from visualize import *
-from pipeline import *
+from pipeline import * # The pipeline.py file
 import sys
 dir_home = os.getcwd()
 sys.path.append(os.path.join(dir_home,'.local/lib/python3.7/site-packages')) # for hpc usage
@@ -22,12 +22,16 @@ if __name__ == '__main__':
                         choices=["bare", 'lwf', 'gem', 'ewc', 'mas', 'twp', 'jointtrain', 'ergnn', 'joint','Joint'], default="bare",
                         help="baseline continual learning method")
     # parameters for continual learning settings
-    parser.add_argument('--share-labels', type=strtobool, default=False,
-                        help='task-IL specific, whether to share output label space for different tasks')
+    parser.add_argument('--share-labels', type=strtobool, default=False, # share-labels is not used in the code thus far...
+                        help='task-IL specific, whether to share output label space for different tasks') #nodes in new tasks can have labels from previous tasks
     parser.add_argument('--inter-task-edges', type=strtobool, default=True,
                         help='whether to keep the edges connecting nodes from different tasks')
     parser.add_argument('--classifier-increase', type=strtobool, default=True,
                         help='(deprecated) class-IL specific, whether to enlarge the label space with the coming of new classes, unrealistic to be set as False')
+    parser.add_argument('--same_labels', type=strtobool, default=False,
+                        help='class-IL specific') # nodes in different tasks have the same labels (e.g., fraud detection all have 0 or 1) 
+    parser.add_argument('--tasks_provided', type=strtobool, default=False,
+                        help='whether the tasks are provided by the dataset or not')
 
     # extra parameters
     parser.add_argument('--refresh_data', type=strtobool, default=False, help='whether to load existing splitting or regenerate')
@@ -88,8 +92,8 @@ if __name__ == '__main__':
         print(hyp_params_str)
         assign_hyp_param(args,hyp_params)
         args.nb_sampler = dgl.dataloading.MultiLayerNeighborSampler(args.n_nbs_sample) if args.sample_nbs else dgl.dataloading.MultiLayerFullNeighborSampler(2)
-        main = get_pipeline(args)
-        train_ratio = round(1 - args.ratio_valid_test[0] - args.ratio_valid_test[1], 2)
+        main = get_pipeline(args) # get the main function for the pipeline
+        train_ratio = round(1 - args.ratio_valid_test[0] - args.ratio_valid_test[1], 2) # Arg.ratio_valid_test = [valid_ratio, test_ratio]
         if args.ILmode == 'classIL':
             subfolder = f'inter_task_edges/cls_IL/train_ratio_{train_ratio}/' if args.inter_task_edges else f'no_inter_task_edges/cls_IL/train_ratio_{train_ratio}/'
         elif args.ILmode == 'taskIL':
@@ -117,7 +121,7 @@ if __name__ == '__main__':
             # if results do not exist or choose to overwrite existing results
             acc_matrices = []
             print('method args are', hyp_params)
-            for ite in range(args.repeats):
+            for ite in range(args.repeats): # repeat the experiments for the mean and std
                 print(name, ite)
                 args.current_model_save_path = [name,ite]
                 try:
