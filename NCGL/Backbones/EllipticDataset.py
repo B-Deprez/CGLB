@@ -27,8 +27,9 @@ class EllipticDataset(DGLDataset):
         edge_data.txId2 = edge_data.txId2.map(map_id)
 
         node_features = torch.from_numpy(node_data.drop(columns=[0, 1]).to_numpy())
+        node_features = node_features.float()
         node_labels = torch.from_numpy(
-            label_data["class"].astype("category").cat.codes.to_numpy()
+            label_data["class"].to_numpy()
             )
 
         edge_src = torch.from_numpy(edge_data["txId1"].to_numpy())
@@ -38,8 +39,8 @@ class EllipticDataset(DGLDataset):
             (edge_src, edge_dst), 
             num_nodes=node_data.shape[0]
             )
+        self.graph.ndata["label"] = node_labels
         self.graph.ndata["feat"] = node_features
-        #self.graph.ndata["label"] = node_labels
         self.labels = node_labels
 
     def __getitem__(self, i):
