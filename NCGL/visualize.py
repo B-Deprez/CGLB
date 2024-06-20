@@ -54,8 +54,8 @@ def show_performance_matrices(result_path, save_fig_name=None, multiplier=1.0):
     im = plt.imshow(acc_matrix_mean)
     ax.spines.right.set_visible(False)
     ax.spines.top.set_visible(False)
-    plt.xlabel('$\mathrm{Tasks}$')
-    plt.ylabel('$\mathrm{Tasks}$')
+    plt.xlabel('$\mathrm{Tasks(test)}$')
+    plt.ylabel('$\mathrm{Tasks(train)}$')
     plt.clim(vmin=0, vmax=100)
     cbar = fig.colorbar(im, ticks=[0, 50, 100])  # , fontsize = 15)
     cbar.ax.tick_params()
@@ -77,6 +77,8 @@ def show_learning_curve(result_path, save_fig_name=None):
     performance_mean, err, _ = AP_err(performance_matrices)
     x = list(range(len(performance_mean)))
     plt.errorbar(x, performance_mean)
+    plt.xlabel('Classes')
+    plt.ylabel('Average Accuracy (%)')
     if save_fig_name is not None:
         plt.savefig(
             f'./results/figures/{save_fig_name}_learning_curve', bbox_inches='tight')
